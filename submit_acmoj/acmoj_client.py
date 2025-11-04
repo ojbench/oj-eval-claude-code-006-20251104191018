@@ -94,8 +94,12 @@ class ACMOJClient:
     def get_submission_detail(self, submission_id: int) -> Optional[Dict]:
         return self._make_request("GET", f"/submission/{submission_id}")
 
-    def abort_submission(self, submission_id: int) -> Optional[Dict]:
-        return self._make_request("POST", f"/submission/{submission_id}/abort")
+    def submit_code(self, problem_id: int, language: str, code_text: str) -> Optional[Dict]:
+        data = {"language": language, "code": code_text}
+        result = self._make_request("POST", f"/problem/{problem_id}/submit", data=data)
+        if result and 'id' in result:
+            self._save_submission_id(result['id'])
+        return result
 
 
 def main():
