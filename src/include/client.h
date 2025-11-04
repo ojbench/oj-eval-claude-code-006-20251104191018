@@ -3,12 +3,21 @@
 
 #include <iostream>
 #include <utility>
+#include <string>
+#include <vector>
+#include <cstdlib>
 
 extern int rows;         // The count of rows of the game map.
 extern int columns;      // The count of columns of the game map.
 extern int total_mines;  // The count of mines of the game map.
 
-// You MUST NOT use any other external variables except for rows, columns and total_mines.
+namespace {
+  constexpr int MAXN = 35;
+  char vis[MAXN][MAXN];
+  const int dr[8] = {-1,-1,-1,0,0,1,1,1};
+  const int dc[8] = {-1,0,1,-1,1,-1,0,1};
+  inline bool in_bounds(int r, int c) { return r >= 0 && r < rows && c >= 0 && c < columns; }
+}
 
 /**
  * @brief The definition of function Execute(int, int, bool)
@@ -34,7 +43,7 @@ void Execute(int r, int c, int type);
  * will read the scale of the game map and the first step taken by the server (see README).
  */
 void InitGame() {
-  // TODO (student): Initialize all your global variables!
+  for (int i = 0; i < rows; ++i) for (int j = 0; j < columns; ++j) vis[i][j] = '?';
   int first_row, first_column;
   std::cin >> first_row >> first_column;
   Execute(first_row, first_column, 0);
@@ -51,7 +60,11 @@ void InitGame() {
  *     01?
  */
 void ReadMap() {
-  // TODO (student): Implement me!
+  std::string line;
+  for (int i = 0; i < rows; ++i) {
+    std::cin >> line;
+    for (int j = 0; j < columns; ++j) vis[i][j] = line[j];
+  }
 }
 
 /**
@@ -61,10 +74,52 @@ void ReadMap() {
  * mind and make your decision here! Caution: you can only execute once in this function.
  */
 void Decide() {
-  // TODO (student): Implement me!
-  // while (true) {
-  //   Execute(0, 0);
-  // }
+  // 1) Auto-explore when marked_count == number
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < columns; ++c) {
+      char ch = vis[r][c];
+      if (ch >= '0' && ch <= '8') {
+        int k = ch - '0';
+        int m = 0, u = 0;
+        for (int t = 0; t < 8; ++t) {
+          int nr = r + dr[t], nc = c + dc[t];
+          if (!in_bounds(nr, nc)) continue;
+          if (vis[nr][nc] == '@') m++;
+          else if (vis[nr][nc] == '?') u++;
+        }
+        if (m == k && u > 0) { Execute(r, c, 2); return; }
+      }
+    }
+  }
+  // 2) Mark when m + u == number
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < columns; ++c) {
+      char ch = vis[r][c];
+      if (ch >= '0' && ch <= '8') {
+        int k = ch - '0';
+        int m = 0; std::pair<int,int> any_unknown = {-1,-1}; int u = 0;
+        for (int t = 0; t < 8; ++t) {
+          int nr = r + dr[t], nc = c + dc[t];
+          if (!in_bounds(nr, nc)) continue;
+          if (vis[nr][nc] == '@') m++;
+          else if (vis[nr][nc] == '?') { u++; if (any_unknown.first == -1) any_unknown = {nr, nc}; }
+        }
+        if (u > 0 && m + u == k) { Execute(any_unknown.first, any_unknown.second, 1); return; }
+      }
+    }
+  }
+  // 3) Fallback visit first unknown
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < columns; ++c) {
+      if (vis[r][c] == '?') { Execute(r, c, 0); return; }
+    }
+  }
+  // 4) No-op: try auto-explore somewhere safe
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < columns; ++c) {
+      if (vis[r][c] >= '0' && vis[r][c] <= '8') { Execute(r, c, 2); return; }
+    }
+  }
 }
 
 #endif
